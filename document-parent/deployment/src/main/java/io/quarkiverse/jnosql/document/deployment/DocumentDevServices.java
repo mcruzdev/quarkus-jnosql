@@ -33,19 +33,19 @@ public class DocumentDevServices {
         LOGGER.info("jnosql.document.database === {}", database);
 
         if (database.equals("couchdb")) {
-            DockerConfiguration dockerConfig = new DockerConfiguration(
-                    ConfigProvider.getConfig().getValue("jnosql.couchdb.port", Integer.class),
-                    ConfigProvider.getConfig().getValue("jnosql.couchdb.password", String.class),
-                    ConfigProvider.getConfig().getValue("jnosql.couchdb.username", String.class));
+
+            Integer bindPort = ConfigProvider.getConfig().getValue("jnosql.couchdb.port", Integer.class);
+            String password = ConfigProvider.getConfig().getValue("jnosql.couchdb.password", String.class);
+            String username = ConfigProvider.getConfig().getValue("jnosql.couchdb.username", String.class);
 
             CouchDBContainer couchDBContainer = new CouchDBContainer()
                     .withEnv(
-                            Map.of("COUCHDB_PASSWORD", dockerConfig.password,
-                                    "COUCHDB_USER", dockerConfig.username))
+                            Map.of("COUCHDB_PASSWORD", password,
+                                    "COUCHDB_USER", username))
                     .withExposedPorts(CouchDBContainer.COUCHDB_DEFAULT_PORT);
 
             couchDBContainer.setPortBindings(
-                    List.of(String.format("0.0.0.0:%d:%d", CouchDBContainer.COUCHDB_DEFAULT_PORT, dockerConfig.port)));
+                    List.of(String.format("0.0.0.0:%d:%d", CouchDBContainer.COUCHDB_DEFAULT_PORT, bindPort)));
 
             couchDBContainer.start();
 
@@ -58,23 +58,17 @@ public class DocumentDevServices {
                     Map.of()).toBuildItem());
         } else {
             String host = ConfigProvider.getConfig().getValue("jnosql.arangodb.host", String.class);
-
             String[] hostPort = host.split(":");
-            int PORT = 1;
-            String portAsSting = hostPort[PORT];
+            Integer bindPort = Integer.valueOf(hostPort[1]);
 
-            DockerConfiguration dockerConfig = new DockerConfiguration(
-                    Integer.valueOf(portAsSting),
-                    ConfigProvider.getConfig()
-                            .getValue("jnosql.arangodb.password", String.class),
-                    null);
+            String password = ConfigProvider.getConfig().getValue("jnosql.arangodb.password", String.class);
 
             ArangoDBContainer arangoDBContainer = new ArangoDBContainer()
                     .withExposedPorts(ArangoDBContainer.ARANGO_DB_DEFAULT_PORT)
-                    .withEnv("ARANGO_ROOT_PASSWORD", dockerConfig.password);
+                    .withEnv("ARANGO_ROOT_PASSWORD", password);
 
             arangoDBContainer.setPortBindings(
-                    List.of(String.format("0.0.0.0:%d:%d", ArangoDBContainer.ARANGO_DB_DEFAULT_PORT, dockerConfig.port)));
+                    List.of(String.format("0.0.0.0:%d:%d", ArangoDBContainer.ARANGO_DB_DEFAULT_PORT, bindPort)));
 
             arangoDBContainer.start();
 
@@ -101,18 +95,6 @@ public class DocumentDevServices {
 
         public CouchDBContainer() {
             super(DockerImageName.parse("couchdb:latest"));
-        }
-    }
-
-    public static class DockerConfiguration {
-        public Integer port;
-        public String password;
-        public String username;
-
-        public DockerConfiguration(Integer port, String password, String username) {
-            this.port = port;
-            this.password = password;
-            this.username = username;
         }
     }
 }
